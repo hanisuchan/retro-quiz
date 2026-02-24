@@ -1,0 +1,1589 @@
+<!--
+RETRO DOOR QUIZ (Single-file) — 3 DOORS ONLY + WEIGHTED SCORING + RANDOMIZED DOORS + STUDENT NAME
+
+How to run:
+1) Save this file as: retro-door-quiz-3doors.html
+2) Double-click it to open in your browser (Chrome / Edge / Firefox).
+   - If audio doesn’t play, click once anywhere, then try again.
+
+How to edit questions:
+- Find the QUESTION_BANK section below.
+- Edit question text/choices/difficulty/correctIndex/explanation.
+- Difficulty scoring:
+  Easy = 1 point, Medium = 2 points, Hard = 3 points
+
+Teacher tip:
+- Students enter their name at the start.
+- Ask them to screenshot the Results screen (it shows name + score + % + missed review).
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Retro Door Quiz — 3 Doors</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --bg2:#0f1620;
+      --panel:#f5efdf;
+      --panel2:#efe6cf;
+      --ink:#1b1a18;
+      --muted:#4b463c;
+
+      --accent1:#ffb84d;
+      --accent2:#ff5c8a;
+      --accent3:#57d0ff;
+      --accent4:#7dff8a;
+      --danger:#ff4b4b;
+
+      --border: 3px;
+      --shadow: 0 10px 0 rgba(0,0,0,.28);
+      --radius: 12px;
+
+      --doorW: 120px;
+      --doorH: 150px;
+
+      --font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    *{ box-sizing:border-box; }
+
+    html,body{
+      height:100%;
+      margin:0;
+      background:
+        radial-gradient(1200px 600px at 50% -10%, #1a2230 0%, transparent 60%),
+        radial-gradient(700px 500px at 10% 10%, rgba(255,184,77,.12) 0%, transparent 55%),
+        radial-gradient(700px 500px at 90% 20%, rgba(87,208,255,.10) 0%, transparent 55%),
+        linear-gradient(180deg, var(--bg2) 0%, var(--bg) 60%, #070a0e 100%);
+      color:var(--panel);
+      font-family:var(--font);
+      image-rendering: pixelated;
+    }
+
+    .bg-stars{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      opacity:.22;
+      mix-blend-mode:screen;
+      background-image:
+        radial-gradient(#ffffff 1px, transparent 1px),
+        radial-gradient(#ffffff 1px, transparent 1px);
+      background-size: 90px 90px, 140px 140px;
+      background-position: 0 0, 40px 30px;
+      animation: drift 18s linear infinite;
+    }
+    @keyframes drift{
+      from{ transform:translateY(0); }
+      to{ transform:translateY(60px); }
+    }
+
+    .px-border{
+      border: var(--border) solid rgba(0,0,0,.75);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      position:relative;
+      background:var(--panel);
+      color:var(--ink);
+    }
+    .px-border::before{
+      content:"";
+      position:absolute;
+      inset: calc(var(--border) * -1);
+      border: var(--border) solid rgba(255,255,255,.08);
+      border-radius: calc(var(--radius) + 2px);
+      pointer-events:none;
+    }
+
+    .app{ min-height:100%; display:flex; flex-direction:column; }
+
+    .topbar{
+      position:sticky; top:0; z-index:10;
+      padding: 12px 12px 8px;
+      backdrop-filter: blur(6px);
+      background: linear-gradient(180deg, rgba(10,14,20,.82) 0%, rgba(10,14,20,.50) 100%);
+      border-bottom: 2px solid rgba(255,255,255,.06);
+    }
+
+    .hud{
+      max-width: 1100px;
+      margin: 0 auto;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .hud-left{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(245,239,223,.10);
+      border: 2px solid rgba(245,239,223,.15);
+      color: var(--panel);
+      font-weight: 900;
+      letter-spacing: .4px;
+      max-width: 100%;
+    }
+    .badge b{ color: var(--accent1); }
+    .badge .tiny{ opacity:.88; font-weight:800; }
+
+    .badge.nameBadge{
+      max-width: min(520px, 92vw);
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+    }
+
+    .hud-right{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+    .toggle{
+      display:flex; align-items:center; gap:8px;
+      user-select:none; cursor:pointer;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(245,239,223,.10);
+      border: 2px solid rgba(245,239,223,.15);
+      color: var(--panel);
+      font-weight: 900;
+    }
+    .toggle .dot{
+      width: 14px; height: 14px;
+      border-radius: 3px;
+      background: var(--accent4);
+      box-shadow: 0 0 0 2px rgba(0,0,0,.35), 0 0 18px rgba(125,255,138,.35);
+    }
+    .toggle.muted .dot{
+      background: var(--danger);
+      box-shadow: 0 0 0 2px rgba(0,0,0,.35), 0 0 18px rgba(255,75,75,.35);
+    }
+
+    .main{ flex:1; padding: 18px 12px 22px; }
+    .wrap{ max-width: 1100px; margin: 0 auto; }
+
+    .screen{ display:none; }
+    .screen.active{ display:block; }
+
+    .title{
+      margin: 8px 0 14px;
+      font-size: clamp(20px, 2.6vw, 34px);
+      letter-spacing: .6px;
+      font-weight: 900;
+      color: var(--panel);
+      text-shadow: 0 3px 0 rgba(0,0,0,.35);
+      display:flex;
+      align-items:flex-end;
+      gap: 10px;
+      flex-wrap:wrap;
+    }
+    .subtitle{
+      margin: 0 0 14px;
+      opacity:.92;
+      line-height: 1.5;
+      color: rgba(245,239,223,.9);
+      max-width: 78ch;
+    }
+
+    .hall{ display:grid; grid-template-columns: 1fr; gap: 14px; }
+    .hall-panel{ padding: 16px; }
+
+    .doors-grid{
+      margin-top: 14px;
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 12px;
+      align-items:stretch;
+    }
+    @media (max-width: 720px){ .doors-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    @media (max-width: 420px){ .doors-grid{ grid-template-columns: 1fr; } }
+
+    .door-card{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding: 12px;
+      background: rgba(245,239,223,.06);
+      border: 2px solid rgba(245,239,223,.12);
+      border-radius: 16px;
+      position:relative;
+      overflow:hidden;
+      min-height: calc(var(--doorH) + 30px);
+    }
+    .door-card::after{
+      content:"";
+      position:absolute;
+      inset:-40px;
+      background: radial-gradient(220px 180px at 50% 30%, rgba(255,184,77,.10), transparent 60%);
+      pointer-events:none;
+    }
+
+    .door{
+      width: min(var(--doorW), 100%);
+      height: var(--doorH);
+      position:relative;
+      cursor:pointer;
+      user-select:none;
+      transform: translateZ(0);
+      will-change: transform;
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+    .door:focus{ outline:none; }
+
+    .door .frame{
+      position:absolute; inset: 0;
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(0,0,0,.40), rgba(0,0,0,.65));
+      box-shadow: 0 10px 0 rgba(0,0,0,.35);
+      border: 3px solid rgba(255,255,255,.08);
+    }
+
+    .door .slab{
+      position:absolute;
+      inset: 10px;
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255,184,77,.22), rgba(255,92,138,.10)),
+        linear-gradient(180deg, #4a2a17 0%, #2f1b10 100%);
+      border: 3px solid rgba(0,0,0,.75);
+      box-shadow: inset 0 0 0 3px rgba(255,255,255,.06);
+      transform-origin: left center;
+    }
+
+    .door .panel1,.door .panel2{
+      position:absolute;
+      left: 18px; right: 18px;
+      height: 40px;
+      border-radius: 6px;
+      border: 3px solid rgba(0,0,0,.70);
+      background: rgba(0,0,0,.18);
+      box-shadow: inset 0 0 0 3px rgba(255,255,255,.05);
+    }
+    .door .panel1{ top: 22px; }
+    .door .panel2{ bottom: 22px; }
+
+    .door .knob{
+      position:absolute;
+      width: 14px; height: 14px;
+      border-radius: 4px;
+      background: var(--accent1);
+      right: 26px;
+      top: calc(50% - 8px);
+      box-shadow: 0 0 0 3px rgba(0,0,0,.55), 0 0 18px rgba(255,184,77,.35);
+    }
+
+    .door .number{
+      position:absolute;
+      left: 50%; top: 52%;
+      transform: translate(-50%, -50%);
+      font-weight: 900;
+      letter-spacing: 1px;
+      font-size: 18px;
+      color: rgba(245,239,223,.92);
+      text-shadow: 0 3px 0 rgba(0,0,0,.55);
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: rgba(0,0,0,.25);
+      border: 2px solid rgba(245,239,223,.10);
+    }
+
+    .door .insideGlow{
+      position:absolute;
+      inset: 16px;
+      border-radius: 8px;
+      background: radial-gradient(220px 180px at 50% 35%, rgba(87,208,255,.45), rgba(255,92,138,.12) 55%, rgba(0,0,0,.80) 100%);
+      opacity: 0;
+      transform: scale(0.96);
+      transition: opacity .2s ease, transform .2s ease;
+    }
+
+    @keyframes wiggle{
+      0%{ transform: translateY(0) rotate(0deg); }
+      35%{ transform: translateY(-2px) rotate(-1.0deg); }
+      70%{ transform: translateY(0) rotate(1.1deg); }
+      100%{ transform: translateY(0) rotate(0deg); }
+    }
+
+    .door:not(.locked):hover{
+      animation: wiggle .45s steps(2,end) 1;
+      filter: drop-shadow(0 10px 0 rgba(0,0,0,.35));
+    }
+
+    .door.opening .slab{ animation: openDoor .55s steps(8,end) forwards; }
+    .door.opening .insideGlow{ opacity:1; transform: scale(1); }
+
+    @keyframes openDoor{
+      0%{ transform: perspective(700px) rotateY(0deg); }
+      100%{ transform: perspective(700px) rotateY(-78deg); }
+    }
+
+    .door .status{
+      position:absolute; left: 8px; top: 8px;
+      font-size: 18px;
+      text-shadow: 0 3px 0 rgba(0,0,0,.55);
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: all .18s steps(2,end);
+    }
+    .door.locked .status{ opacity: 1; transform: translateY(0); }
+
+    .door.locked{
+      cursor:not-allowed;
+      filter: grayscale(.25) brightness(.92);
+      opacity: .92;
+    }
+    .door.locked .slab{ transform: perspective(700px) rotateY(-10deg); }
+
+    .door.locked.correct .knob{ background: var(--accent4); box-shadow: 0 0 0 3px rgba(0,0,0,.55), 0 0 18px rgba(125,255,138,.35); }
+    .door.locked.wrong .knob{ background: var(--danger); box-shadow: 0 0 0 3px rgba(0,0,0,.55), 0 0 18px rgba(255,75,75,.35); }
+    .door.locked.closed .knob{ background: rgba(245,239,223,.35); box-shadow: 0 0 0 3px rgba(0,0,0,.55); }
+
+    .card{ padding: 16px; }
+
+    .qhead{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 14px;
+      flex-wrap:wrap;
+    }
+    .qtitle{
+      margin: 0;
+      font-size: clamp(18px, 2.2vw, 26px);
+      font-weight: 900;
+      letter-spacing: .4px;
+    }
+    .qmeta{
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .chip{
+      padding: 6px 10px;
+      border-radius: 12px;
+      background: rgba(0,0,0,.06);
+      border: 2px solid rgba(0,0,0,.12);
+      font-weight: 900;
+    }
+
+    .prompt{
+      margin: 12px 0 10px;
+      font-size: 18px;
+      line-height: 1.55;
+    }
+
+    .options{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .btn{
+      appearance:none;
+      border:none;
+      cursor:pointer;
+      user-select:none;
+      font-family: var(--font);
+      font-weight: 900;
+      letter-spacing: .4px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--panel2);
+      color: var(--ink);
+      box-shadow: var(--shadow);
+      position:relative;
+      transform: translateY(0);
+      transition: transform .08s steps(2,end), filter .15s ease;
+      border: 3px solid rgba(0,0,0,.75);
+      text-align: left;
+    }
+    .btn::after{
+      content:"";
+      position:absolute;
+      inset: 3px;
+      border-radius: 10px;
+      border: 3px solid rgba(255,255,255,.12);
+      pointer-events:none;
+    }
+    .btn:hover{ filter: brightness(1.02); }
+    .btn:active{ transform: translateY(4px); box-shadow: 0 6px 0 rgba(0,0,0,.25); }
+    .btn.primary{ background: linear-gradient(180deg, rgba(255,184,77,.45), rgba(255,92,138,.18)), var(--panel); }
+    .btn.dark{ background: rgba(0,0,0,.12); }
+    .btn[disabled]{ opacity:.55; cursor:not-allowed; filter: grayscale(.2); }
+
+    .feedback{
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 14px;
+      border: 3px solid rgba(0,0,0,.75);
+      background: rgba(0,0,0,.06);
+      box-shadow: 0 10px 0 rgba(0,0,0,.16);
+      display:none;
+    }
+    .feedback.show{ display:block; }
+
+    .feedback .verdict{
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: .4px;
+      margin-bottom: 6px;
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px 10px;
+      border-radius: 12px;
+      border: 2px solid rgba(0,0,0,.15);
+      font-weight: 900;
+    }
+    .tag.good{ background: rgba(125,255,138,.20); }
+    .tag.bad{ background: rgba(255,75,75,.20); }
+
+    .explain{ margin:0; line-height: 1.55; color: rgba(27,26,24,.92); }
+    .actions{
+      margin-top: 12px;
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+    }
+
+    .results-grid{
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 14px;
+      align-items:start;
+    }
+    @media (max-width: 860px){ .results-grid{ grid-template-columns: 1fr; } }
+
+    .stat{
+      display:flex;
+      gap: 12px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      padding: 10px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.06);
+      border: 2px solid rgba(0,0,0,.12);
+    }
+    .big{ font-size: 28px; font-weight: 900; letter-spacing: .6px; }
+
+    .missed{ margin-top: 12px; display:grid; gap: 10px; }
+
+    .miss-item{
+      padding: 12px;
+      border-radius: 14px;
+      border: 3px solid rgba(0,0,0,.75);
+      background: rgba(255,75,75,.06);
+      box-shadow: 0 10px 0 rgba(0,0,0,.14);
+    }
+    .miss-item h4{ margin: 0 0 8px; font-size: 16px; font-weight: 900; }
+    .miss-item .line{ margin: 6px 0; color: rgba(27,26,24,.92); line-height: 1.5; }
+
+    .hint{
+      margin-top: 10px;
+      font-size: 13px;
+      color: rgba(245,239,223,.82);
+      opacity: .95;
+    }
+
+    .scanlines{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      background: repeating-linear-gradient(
+        180deg,
+        rgba(0,0,0,.0) 0px,
+        rgba(0,0,0,.0) 2px,
+        rgba(0,0,0,.12) 3px
+      );
+      opacity:.16;
+      mix-blend-mode:multiply;
+    }
+
+    /* Start screen extras */
+    .start-grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    @media (max-width: 860px){ .start-grid{ grid-template-columns: 1fr; } }
+
+    .inputRow{
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      margin-top: 10px;
+    }
+    .field{
+      flex: 1 1 260px;
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      min-width: 220px;
+    }
+    label{
+      font-weight: 900;
+      letter-spacing: .4px;
+    }
+    input[type="text"]{
+      font-family: var(--font);
+      font-weight: 900;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 3px solid rgba(0,0,0,.75);
+      background: var(--panel2);
+      color: var(--ink);
+      box-shadow: 0 10px 0 rgba(0,0,0,.18);
+      outline: none;
+    }
+    input[type="text"]:focus{
+      box-shadow: 0 10px 0 rgba(0,0,0,.18), 0 0 0 3px rgba(87,208,255,.35);
+    }
+    .helper{
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.5;
+      color: rgba(27,26,24,.78);
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{ animation:none !important; transition:none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-stars"></div>
+  <div class="scanlines"></div>
+
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="hud">
+        <div class="hud-left">
+          <div class="badge nameBadge" title="Student name">
+            🪪 <span class="tiny">Name</span> <b id="hudName">Not set</b>
+          </div>
+          <div class="badge" title="Weighted score (Easy=1, Medium=2, Hard=3)">
+            🏆 <span class="tiny">Score</span> <b id="hudScore">0</b><span class="tiny">/</span><span id="hudTotalPts">0</span>
+          </div>
+          <div class="badge" title="Doors chosen (max 3)">
+            🚪 <span class="tiny">Chosen</span> <b id="hudChosen">0</b><span class="tiny">/</span><span id="hudMax">3</span>
+          </div>
+          <div class="badge" title="Remaining picks">
+            ⏳ <span class="tiny">Picks left</span> <b id="hudRemaining">3</b>
+          </div>
+        </div>
+
+        <div class="hud-right">
+          <div class="toggle" id="muteToggle" role="button" tabindex="0" aria-label="Toggle sound">
+            <span class="dot" aria-hidden="true"></span>
+            <span id="muteLabel">SFX: ON</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="wrap">
+
+        <!-- START SCREEN -->
+        <section class="screen active" id="screenStart">
+          <div class="title">🎮 Retro Door Quiz</div>
+          <div class="subtitle">
+            Enter your name, then pick <b>ONLY 3 doors</b>. After the 3rd answer, you’ll get your results screen for screenshot 📸✨
+          </div>
+
+          <div class="start-grid">
+            <div class="px-border" style="padding:16px;">
+              <div style="font-weight:900; font-size:18px; margin-bottom:6px;">🪪 Student Info</div>
+              <p class="helper">Please type your name exactly (for screenshot proof).</p>
+
+              <div class="inputRow">
+                <div class="field">
+                  <label for="nameInput">Your Name</label>
+                  <input id="nameInput" type="text" placeholder="e.g. Aina H02 / Farid H12" maxlength="60" />
+                  <p class="helper">Tip: include class/group (H02 / H11 / H12) so Miss Hanis can check easily 😉</p>
+                </div>
+              </div>
+
+              <div class="inputRow" style="justify-content:flex-start; margin-top:12px;">
+                <button class="btn primary" id="startBtn">🚪 Enter the Hallway</button>
+              </div>
+
+              <div class="hint">Audio note: click once anywhere if sound doesn’t play 🎧</div>
+            </div>
+
+            <div class="px-border" style="padding:16px;">
+              <div style="font-weight:900; font-size:18px; margin-bottom:6px;">📌 Rules</div>
+              <div style="line-height:1.7; color: rgba(27,26,24,.92);">
+                <div>✅ Choose <b>3 doors only</b></div>
+                <div>🎯 Scoring: <b>Easy=1</b>, <b>Medium=2</b>, <b>Hard=3</b></div>
+                <div>🔀 Doors are <b>randomized</b> each run</div>
+                <div>📸 Screenshot the <b>Results</b> screen at the end</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- HALLWAY SCREEN -->
+        <section class="screen" id="screenHall">
+          <div class="title">🕹️ Hallway of Doors <span style="opacity:.85;font-size:.72em; font-weight:800;">(Choose ONLY 3 doors)</span></div>
+          <div class="subtitle">
+            Open <b>any 3 doors</b> only. After the 3rd answer, the game ends automatically ✨
+            <br/>Scoring: <b>Easy=1</b>, <b>Medium=2</b>, <b>Hard=3</b> points.
+          </div>
+
+          <div class="hall">
+            <div class="px-border hall-panel">
+              <div class="doors-grid" id="doorsGrid" aria-label="Door grid"></div>
+              <div class="hint">Randomized doors are for fairness ✨ (different students get different door orders)</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- QUESTION SCREEN -->
+        <section class="screen" id="screenQuestion">
+          <div class="title">🧩 Question Room</div>
+
+          <div class="px-border card">
+            <div class="qhead">
+              <div>
+                <h2 class="qtitle" id="qTitle">Door #</h2>
+                <div class="prompt" id="qPrompt">Question text…</div>
+              </div>
+              <div class="qmeta">
+                <div class="chip" id="qChip">Difficulty</div>
+                <div class="chip" id="qPoints">+0 pts</div>
+              </div>
+            </div>
+
+            <div class="options" id="options"></div>
+
+            <div class="feedback" id="feedback">
+              <div class="verdict" id="verdict"></div>
+              <p class="explain" id="explanation"></p>
+              <div class="actions">
+                <button class="btn dark" id="backBtn">⬅ Back to Doors</button>
+                <button class="btn primary" id="finishEarlyBtn" title="If you want to stop now">🏁 Finish Now</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RESULTS SCREEN -->
+        <section class="screen" id="screenResults">
+          <div class="title">🏁 Results</div>
+          <div class="subtitle">
+            <b>Student:</b> <span id="resName"></span> • Finished 3 doors ✅
+            <br/>Please screenshot this page 📸✨
+          </div>
+
+          <div class="results-grid">
+            <div class="px-border card">
+              <div class="stat">
+                <div>
+                  <div style="font-weight:900; opacity:.9;">Weighted Score</div>
+                  <div class="big" id="resScore">0/0</div>
+                </div>
+                <div>
+                  <div style="font-weight:900; opacity:.9; text-align:right;">Percentage</div>
+                  <div class="big" id="resPct" style="text-align:right;">0%</div>
+                </div>
+              </div>
+
+              <div class="missed" id="missedList"></div>
+
+              <div class="actions" style="justify-content:flex-start; margin-top:14px;">
+                <button class="btn primary" id="playAgainBtn">🔁 Play Again</button>
+                <button class="btn dark" id="backToDoorsBtn">🚪 Back to Doors</button>
+              </div>
+            </div>
+
+            <div class="px-border card">
+              <h3 style="margin:0 0 10px; font-size: 18px; font-weight: 900;">Screenshot Checklist 📸</h3>
+              <div style="line-height:1.7; color: rgba(27,26,24,.92);">
+                ✅ Name shown<br/>
+                ✅ Score + percentage shown<br/>
+                ✅ Missed review (if any) shown<br/>
+                ✅ Date/time (optional: screenshot includes your device time)
+                <hr style="border:none; border-top:2px dashed rgba(0,0,0,.18); margin: 12px 0;" />
+                <div style="opacity:.95;">
+                  Note: No database is used. Screenshot is your proof 😉
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    /**********************************************************
+     * SETTINGS
+     **********************************************************/
+    const MAX_DOORS_TO_CHOOSE = 3;
+
+    // Difficulty → points
+    const DIFFICULTY_POINTS = {
+      easy: 1,
+      medium: 2,
+      hard: 3
+    };
+
+    /**********************************************************
+     * QUESTION_BANK (keep as you like — already rewritten & clean)
+     **********************************************************/
+    const QUESTION_BANK = [
+      // 1) Natural selection (stabilizing)
+      {
+        id: "C3_Q1",
+        topicTag: "Ch3_Selection",
+        difficulty: "Easy",
+        question: "Stabilizing selection happens when the environment favours which type of phenotype?",
+        choices: [
+          "Both extreme phenotypes, increasing genetic variability",
+          "The intermediate phenotype and acts against both extreme phenotypes",
+          "One extreme phenotype, shifting the population mean",
+          "Random chance changes allele frequencies in a small population"
+        ],
+        correctIndex: 1,
+        explanation: "Stabilizing selection favours the intermediate/average phenotype and selects against both extremes, often reducing genetic variability."
+      },
+      {
+        id: "C3_Q2",
+        topicTag: "Ch3_Selection",
+        difficulty: "Easy",
+        question: "Which is a classic example of stabilizing selection in humans?",
+        choices: [
+          "Peppered moth colour change in polluted areas",
+          "Birth weight of human babies",
+          "Antibiotic resistance in bacteria",
+          "Beak size shift in finches during drought"
+        ],
+        correctIndex: 1,
+        explanation: "Human birth weight is a classic stabilizing selection example: very low and very high birth weights are selected against."
+      },
+
+      // 2) Genetic drift: bottleneck vs founder
+      {
+        id: "C3_Q3",
+        topicTag: "Ch3_Speciation",
+        difficulty: "Medium",
+        question: "Bottleneck effect and founder effect are similar because…",
+        choices: [
+          "Both are driven by natural selection on advantageous traits",
+          "Both occur only in large populations",
+          "Both occur due to chance events and can change allele frequencies",
+          "Both always increase genetic variability"
+        ],
+        correctIndex: 2,
+        explanation: "Both are genetic drift processes: chance events in small populations cause allele/genotype frequencies to change."
+      },
+      {
+        id: "C3_Q4",
+        topicTag: "Ch3_Speciation",
+        difficulty: "Hard",
+        question: "Which statement BEST differentiates bottleneck effect from founder effect?",
+        choices: [
+          "Bottleneck: new population forms by migration; Founder: survivors remain after disaster",
+          "Bottleneck: occurs after a population is drastically reduced (e.g., disaster); Founder: occurs when a small group establishes a new population",
+          "Bottleneck: increases gene flow; Founder: decreases mutation rate",
+          "Bottleneck: happens only in plants; Founder: happens only in animals"
+        ],
+        correctIndex: 1,
+        explanation: "Bottleneck = sharp reduction due to disaster; Founder = small group starts a new isolated population."
+      },
+
+      // 3) Enzyme-cofactor-holoenzyme
+      {
+        id: "C4_Q1",
+        topicTag: "Ch4_Enzymes",
+        difficulty: "Easy",
+        question: "An apoenzyme becomes an active enzyme only after combining with a cofactor. The complete active enzyme is called a…",
+        choices: [
+          "Inhibitor",
+          "Holoenzyme",
+          "Substrate",
+          "Denaturant"
+        ],
+        correctIndex: 1,
+        explanation: "Cofactor + apoenzyme forms a holoenzyme (active enzyme)."
+      },
+      {
+        id: "C4_Q2",
+        topicTag: "Ch4_Enzymes",
+        difficulty: "Medium",
+        question: "How does a cofactor function in relation to an apoenzyme?",
+        choices: [
+          "It permanently binds and becomes part of the enzyme’s primary structure",
+          "It activates the apoenzyme, enabling proper substrate binding at the active site",
+          "It blocks the active site to prevent substrate binding",
+          "It breaks peptide bonds in the enzyme"
+        ],
+        correctIndex: 1,
+        explanation: "Cofactors help activate apoenzymes so the substrate can bind properly at the active site."
+      },
+      {
+        id: "C4_Q3",
+        topicTag: "Ch4_Enzymes",
+        difficulty: "Medium",
+        question: "NAD+ is best described as which type of cofactor?",
+        choices: [
+          "Metal ion",
+          "Coenzyme",
+          "Competitive inhibitor",
+          "Prosthetic group"
+        ],
+        correctIndex: 1,
+        explanation: "NAD+ is a coenzyme (organic cofactor)."
+      },
+      {
+        id: "C4_Q4",
+        topicTag: "Ch4_Enzymes",
+        difficulty: "Hard",
+        question: "Which statement BEST explains how NAD+ functions in enzymatic reactions?",
+        choices: [
+          "It forms peptide bonds between amino acids",
+          "It binds loosely and temporarily, transferring electrons/atoms/chemical groups between substrates",
+          "It permanently modifies the enzyme to create an active site",
+          "It hydrolyses ATP to provide energy directly"
+        ],
+        correctIndex: 1,
+        explanation: "NAD+ binds temporarily and acts as a carrier transferring electrons (redox coenzyme)."
+      },
+
+      // 4) Respiration
+      {
+        id: "C5_Q1",
+        topicTag: "Ch5_Respiration",
+        difficulty: "Easy",
+        question: "Which process occurs in the mitochondrial matrix immediately after glycolysis, converting pyruvate into acetyl-CoA?",
+        choices: [
+          "Glycolysis",
+          "Pyruvate oxidation (link reaction)",
+          "Chemiosmosis",
+          "Fermentation"
+        ],
+        correctIndex: 1,
+        explanation: "Pyruvate oxidation happens in the mitochondrial matrix."
+      },
+      {
+        id: "C5_Q2",
+        topicTag: "Ch5_Respiration",
+        difficulty: "Easy",
+        question: "Which process happens at the inner mitochondrial membrane and directly uses ATP synthase to make ATP?",
+        choices: [
+          "Krebs cycle",
+          "Substrate-level phosphorylation",
+          "Chemiosmosis (oxidative phosphorylation via ATP synthase)",
+          "Pyruvate oxidation"
+        ],
+        correctIndex: 2,
+        explanation: "Chemiosmosis occurs across the inner mitochondrial membrane via ATP synthase."
+      },
+      {
+        id: "C5_Q3",
+        topicTag: "Ch5_Respiration",
+        difficulty: "Hard",
+        question: "In glycolysis, ATP is produced by substrate-level phosphorylation at which two steps?",
+        choices: [
+          "Glucose → glucose-6-phosphate; pyruvate → acetyl-CoA",
+          "1,3-bisphosphoglycerate → 3-phosphoglycerate AND PEP → pyruvate",
+          "NADH → NAD+ AND FADH2 → FAD",
+          "Oxygen → water AND CO2 → bicarbonate"
+        ],
+        correctIndex: 1,
+        explanation: "ATP forms when phosphate transfers from 1,3-BPG to ADP and from PEP to ADP."
+      },
+      {
+        id: "C5_Q4",
+        topicTag: "Ch5_Respiration",
+        difficulty: "Hard",
+        question: "How does a proton gradient help ATP synthesis during oxidative phosphorylation?",
+        choices: [
+          "Protons move from matrix to intermembrane space through ATP synthase, releasing energy",
+          "Protons accumulate in the intermembrane space and flow back to the matrix through ATP synthase, releasing energy to phosphorylate ADP",
+          "Protons bind oxygen directly to form ATP",
+          "Protons stop electron flow to conserve energy"
+        ],
+        correctIndex: 1,
+        explanation: "H+ in the intermembrane space creates proton-motive force; H+ flows back via ATP synthase to drive ATP formation."
+      },
+      {
+        id: "C5_Q5",
+        topicTag: "Ch5_Respiration",
+        difficulty: "Medium",
+        question: "Which comparison is CORRECT between lactate fermentation and aerobic respiration?",
+        choices: [
+          "Fermentation produces more ATP than aerobic respiration",
+          "Fermentation uses oxygen as the final electron acceptor",
+          "Fermentation produces ATP only by substrate-level phosphorylation, while aerobic uses both substrate-level and oxidative phosphorylation",
+          "Fermentation occurs in mitochondria, aerobic occurs only in cytosol"
+        ],
+        correctIndex: 2,
+        explanation: "Fermentation: glycolysis only, ATP via substrate-level phosphorylation; Aerobic: includes ETC + chemiosmosis."
+      },
+
+      // 5) Photosynthesis
+      {
+        id: "C6_Q1",
+        topicTag: "Ch6_Photosynthesis",
+        difficulty: "Easy",
+        question: "In the light-dependent reaction, water is split (photolysis). Which pair is produced directly from photolysis/its immediate products?",
+        choices: [
+          "O2 and NADPH",
+          "H+ (hydrogen ions) and electrons (from splitting H2O)",
+          "ATP and CO2",
+          "Glucose and RuBP"
+        ],
+        correctIndex: 1,
+        explanation: "Photolysis of water produces H+ ions, electrons, and oxygen (O2) as a by-product."
+      },
+      {
+        id: "C6_Q2",
+        topicTag: "Ch6_Photosynthesis",
+        difficulty: "Medium",
+        question: "Which enzyme reduces NADP+ to NADPH + H+ in the light-dependent reaction?",
+        choices: [
+          "Rubisco",
+          "ATP synthase",
+          "NADP+ reductase",
+          "Carbonic anhydrase"
+        ],
+        correctIndex: 2,
+        explanation: "NADP+ reductase catalyses the reduction of NADP+ to NADPH."
+      },
+      {
+        id: "C6_Q3",
+        topicTag: "Ch6_Photosynthesis",
+        difficulty: "Hard",
+        question: "Which statement is TRUE about noncyclic vs cyclic photophosphorylation?",
+        choices: [
+          "Noncyclic produces ATP only, cyclic produces ATP + NADPH",
+          "Noncyclic involves PSI only; cyclic involves PSI and PSII",
+          "Noncyclic produces ATP + NADPH and releases O2; cyclic produces ATP only and no O2 released",
+          "Both require photolysis of water"
+        ],
+        correctIndex: 2,
+        explanation: "Noncyclic: PSI + PSII, NADPH + ATP, photolysis releases O2. Cyclic: PSI only, ATP only, no O2."
+      },
+      {
+        id: "C6_Q4",
+        topicTag: "Ch6_Photosynthesis",
+        difficulty: "Hard",
+        question: "Which description BEST explains CAM plants (temporal separation of carbon fixation)?",
+        choices: [
+          "CO2 is fixed only during the day by PEP carboxylase and stored as glucose at night",
+          "CO2 is fixed at night by PEP carboxylase into organic acids (e.g., malate), then released as CO2 during the day for the Calvin cycle",
+          "CO2 is fixed only in bundle sheath cells",
+          "Stomata open during the day and close at night to reduce CO2 loss"
+        ],
+        correctIndex: 1,
+        explanation: "CAM: night fixation via PEP carboxylase → malate stored; day decarboxylation provides CO2 for Calvin cycle."
+      },
+
+      // 6) CO2 transport
+      {
+        id: "C7_Q1",
+        topicTag: "Ch7_GasExchange",
+        difficulty: "Hard",
+        question: "Most CO2 is transported from tissues to the lungs in which form?",
+        choices: [
+          "Dissolved CO2 in plasma",
+          "Carbaminohaemoglobin (CO2 bound to Hb)",
+          "Bicarbonate ions (HCO3-) in plasma",
+          "Carbonic acid (H2CO3) in erythrocytes"
+        ],
+        correctIndex: 2,
+        explanation: "Most CO2 (~60%) is transported as bicarbonate ions (HCO3-) formed in RBCs via carbonic anhydrase."
+      },
+
+      // 7) Plant transport
+      {
+        id: "C8_Q1",
+        topicTag: "Ch8_Transport",
+        difficulty: "Easy",
+        question: "Water can move across roots by apoplast, symplast, or transmembrane routes. Which route repeatedly crosses plasma membranes and cell walls from cell to cell?",
+        choices: [
+          "Symplast pathway",
+          "Transmembrane pathway",
+          "Phloem loading pathway",
+          "Cyclic pathway"
+        ],
+        correctIndex: 1,
+        explanation: "Transmembrane route crosses the plasma membrane multiple times."
+      },
+      {
+        id: "C8_Q2",
+        topicTag: "Ch8_Transport",
+        difficulty: "Medium",
+        question: "Which difference between apoplast and symplast pathways is correct?",
+        choices: [
+          "Apoplast moves through cytoplasm via plasmodesmata; Symplast moves through cell walls",
+          "Apoplast moves via cell walls and intercellular spaces; Symplast moves via cytoplasm through plasmodesmata",
+          "Both move only through xylem vessels",
+          "Symplast bypasses the plasma membrane completely at all times"
+        ],
+        correctIndex: 1,
+        explanation: "Apoplast = cell walls/intercellular spaces; Symplast = cytoplasm via plasmodesmata."
+      },
+
+      // Heart impulse pathway after AV delay
+      {
+        id: "C8_Q3",
+        topicTag: "Ch8_Circulation",
+        difficulty: "Medium",
+        question: "After the 0.1 s delay at the AV node, what is the correct pathway of the impulse to the ventricles?",
+        choices: [
+          "SA node → Purkinje fibres → Bundle branches → Bundle of His",
+          "AV node → Bundle of His → Right & left bundle branches → Purkinje fibres",
+          "AV node → atria only → ventricles directly",
+          "AV node → pulmonary artery → aorta"
+        ],
+        correctIndex: 1,
+        explanation: "After AV node delay: Bundle of His → bundle branches → Purkinje fibres to apex/ventricles."
+      },
+
+      // 8) Nephron
+      {
+        id: "C9_Q1",
+        topicTag: "Ch9_Homeostasis",
+        difficulty: "Easy",
+        question: "Which nephron segment is MOST associated with reabsorption of glucose and amino acids?",
+        choices: [
+          "Proximal convoluted tubule (PCT)",
+          "Loop of Henle (descending limb)",
+          "Distal convoluted tubule (DCT)",
+          "Collecting duct"
+        ],
+        correctIndex: 0,
+        explanation: "Glucose and amino acids are mainly reabsorbed in the PCT."
+      },
+      {
+        id: "C9_Q2",
+        topicTag: "Ch9_Homeostasis",
+        difficulty: "Medium",
+        question: "Ultrafiltration at the glomerulus is efficient mainly because…",
+        choices: [
+          "Hydrostatic pressure in the glomerulus is low",
+          "The basement membrane has no pores",
+          "Hydrostatic pressure is high and the filtration barrier is permeable to small solutes",
+          "The capillary network is short and straight"
+        ],
+        correctIndex: 2,
+        explanation: "High hydrostatic pressure + permeable filtration barrier makes ultrafiltration efficient."
+      },
+      {
+        id: "C9_Q3",
+        topicTag: "Ch9_Homeostasis",
+        difficulty: "Hard",
+        question: "Albuminuria (protein in urine) suggests damage to which structure, and why?",
+        choices: [
+          "Collecting duct; proteins are normally secreted there",
+          "Glomerulus; proteins are normally too large to pass the filtration barrier",
+          "PCT; proteins are normally ultrafiltered in large amounts",
+          "Loop of Henle; proteins diffuse out by osmosis"
+        ],
+        correctIndex: 1,
+        explanation: "Proteins are usually retained in blood; glomerular filtration barrier damage allows protein to pass into filtrate."
+      }
+    ];
+
+    /**********************************************************
+     * Helpers
+     **********************************************************/
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+    function shuffle(arr){
+      const a = arr.slice();
+      for (let i=a.length-1; i>0; i--){
+        const j = Math.floor(Math.random() * (i+1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function pointsForDifficulty(d){
+      const key = String(d || '').trim().toLowerCase();
+      return DIFFICULTY_POINTS[key] ?? 1;
+    }
+
+    function normalizeQuestion(q, idx){
+      return {
+        __idx: idx,
+        id: q.id ?? `Q${idx+1}`,
+        topicTag: q.topicTag ?? '',
+        difficulty: q.difficulty ?? 'Easy',
+        text: q.question ?? '',
+        options: Array.isArray(q.choices) ? q.choices : [],
+        correctIndex: typeof q.correctIndex === 'number' ? q.correctIndex : null,
+        explanation: q.explanation ?? '',
+      };
+    }
+
+    function escapeHtml(str){
+      return String(str)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
+    }
+
+    /**********************************************************
+     * Audio (Web Audio API)
+     **********************************************************/
+    let audioCtx = null;
+    let muted = false;
+
+    function ensureAudio(){
+      if (muted) return null;
+      if (!audioCtx){
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(()=>{});
+      }
+      return audioCtx;
+    }
+
+    function playTone({type='sine', freq=440, duration=0.12, gain=0.08, slideTo=null, detune=0}){
+      const ctx = ensureAudio();
+      if (!ctx) return;
+      const t0 = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      if (slideTo != null){
+        osc.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), t0 + duration);
+      }
+      osc.detune.setValueAtTime(detune, t0);
+
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + duration + 0.02);
+    }
+
+    function playDoorOpenSfx(){
+      playTone({type:'square', freq: 523.25, duration: 0.11, gain: 0.06, slideTo: 659.25});
+      setTimeout(()=>playTone({type:'square', freq: 783.99, duration: 0.10, gain: 0.05, slideTo: 1046.5}), 35);
+      setTimeout(()=>playTone({type:'triangle', freq: 1318.5, duration: 0.08, gain: 0.035}), 65);
+    }
+
+    function playCorrectSfx(){
+      playTone({type:'triangle', freq: 880, duration: 0.10, gain: 0.06, slideTo: 1174.66});
+      setTimeout(()=>playTone({type:'triangle', freq: 1396.91, duration: 0.08, gain: 0.045}), 70);
+    }
+
+    function playWrongSfx(){
+      playTone({type:'sawtooth', freq: 220, duration: 0.16, gain: 0.06, slideTo: 90});
+      setTimeout(()=>playTone({type:'square', freq: 110, duration: 0.12, gain: 0.04, slideTo: 70}), 40);
+    }
+
+    /**********************************************************
+     * UI refs
+     **********************************************************/
+    const screens = {
+      start: $('#screenStart'),
+      hall: $('#screenHall'),
+      q: $('#screenQuestion'),
+      results: $('#screenResults')
+    };
+
+    const hud = {
+      name: $('#hudName'),
+      score: $('#hudScore'),
+      totalPts: $('#hudTotalPts'),
+      chosen: $('#hudChosen'),
+      max: $('#hudMax'),
+      remaining: $('#hudRemaining')
+    };
+
+    const doorsGrid = $('#doorsGrid');
+
+    const qTitle = $('#qTitle');
+    const qChip = $('#qChip');
+    const qPoints = $('#qPoints');
+    const qPrompt = $('#qPrompt');
+    const optionsEl = $('#options');
+    const feedbackEl = $('#feedback');
+    const verdictEl = $('#verdict');
+    const explanationEl = $('#explanation');
+    const backBtn = $('#backBtn');
+    const finishEarlyBtn = $('#finishEarlyBtn');
+
+    const resName = $('#resName');
+    const resScore = $('#resScore');
+    const resPct = $('#resPct');
+    const missedList = $('#missedList');
+    const playAgainBtn = $('#playAgainBtn');
+    const backToDoorsBtn = $('#backToDoorsBtn');
+
+    const muteToggle = $('#muteToggle');
+    const muteLabel = $('#muteLabel');
+
+    const nameInput = $('#nameInput');
+    const startBtn = $('#startBtn');
+
+    /**********************************************************
+     * State
+     **********************************************************/
+    let state = null;
+
+    function showScreen(which){
+      Object.values(screens).forEach(s => s.classList.remove('active'));
+      screens[which].classList.add('active');
+    }
+
+    function updateHud(){
+      hud.name.textContent = state.studentName || 'Not set';
+      hud.score.textContent = String(state.scorePts);
+      hud.totalPts.textContent = String(state.possiblePts);
+      hud.chosen.textContent = String(state.chosenCount);
+      hud.max.textContent = String(MAX_DOORS_TO_CHOOSE);
+      hud.remaining.textContent = String(Math.max(0, MAX_DOORS_TO_CHOOSE - state.chosenCount));
+    }
+
+    function initState(studentName){
+      const bank = (Array.isArray(QUESTION_BANK) ? QUESTION_BANK : []).map((q,i)=>normalizeQuestion(q,i));
+      const shuffledQuestions = shuffle(bank); // 🔀 randomize door order
+
+      const totalDoors = Math.max(9, shuffledQuestions.length || 9);
+      const questions = shuffledQuestions.length ? shuffledQuestions : [];
+
+      state = {
+        studentName: (studentName || '').trim(),
+        questions,
+        totalDoors,
+
+        picked: Array(questions.length).fill(false),
+        answered: Array(questions.length).fill(false),
+        correct: Array(questions.length).fill(null),
+        chosenIndex: Array(questions.length).fill(null),
+
+        chosenCount: 0,
+        scorePts: 0,
+        possiblePts: 0,
+
+        activeDoorIndex: null
+      };
+
+      renderDoors();
+      updateHud();
+    }
+
+    function renderDoors(){
+      doorsGrid.innerHTML = '';
+      const total = state.totalDoors;
+      const limitReached = state.chosenCount >= MAX_DOORS_TO_CHOOSE;
+
+      for (let i=0;i<total;i++){
+        const card = document.createElement('div');
+        card.className = 'door-card';
+
+        const door = document.createElement('button');
+        door.type = 'button';
+        door.className = 'door';
+        door.setAttribute('aria-label', `Door ${i+1}`);
+        door.dataset.index = String(i);
+
+        const hasQuestion = i < state.questions.length;
+        const answered = hasQuestion ? state.answered[i] : true; // doors beyond question length will be locked
+        const isLocked = answered || limitReached || !hasQuestion;
+
+        if (isLocked){
+          door.classList.add('locked');
+
+          if (!hasQuestion){
+            door.classList.add('closed');
+          } else if (answered){
+            if (state.correct[i] === true) door.classList.add('correct');
+            if (state.correct[i] === false) door.classList.add('wrong');
+          } else {
+            door.classList.add('closed');
+          }
+        }
+
+        const status = document.createElement('div');
+        status.className = 'status';
+        status.textContent = !hasQuestion ? '🔒'
+          : answered ? (state.correct[i] ? '✅' : '❌')
+          : (limitReached ? '🔒' : '');
+
+        door.innerHTML = `
+          <div class="frame"></div>
+          <div class="insideGlow"></div>
+          <div class="slab">
+            <div class="panel1"></div>
+            <div class="panel2"></div>
+            <div class="knob"></div>
+          </div>
+          <div class="number">${i+1}</div>
+        `;
+        door.appendChild(status);
+
+        door.addEventListener('click', () => onDoorClick(i, door, hasQuestion));
+
+        card.appendChild(door);
+        doorsGrid.appendChild(card);
+      }
+    }
+
+    function onDoorClick(i, doorEl, hasQuestion){
+      const limitReached = state.chosenCount >= MAX_DOORS_TO_CHOOSE;
+
+      if (!hasQuestion || state.answered[i] || limitReached){
+        playWrongSfx();
+        doorEl.animate([
+          { transform:'translateX(0)' },
+          { transform:'translateX(-4px)' },
+          { transform:'translateX(4px)' },
+          { transform:'translateX(0)' }
+        ], { duration: 220, iterations: 1, easing: 'steps(2,end)' });
+        return;
+      }
+
+      state.activeDoorIndex = i;
+
+      playDoorOpenSfx();
+      doorEl.classList.add('opening');
+
+      setTimeout(()=>{
+        doorEl.classList.remove('opening');
+        openQuestion(i);
+      }, 520);
+    }
+
+    function openQuestion(i){
+      const q = state.questions[i];
+      const pts = pointsForDifficulty(q.difficulty);
+
+      feedbackEl.classList.remove('show');
+      verdictEl.innerHTML = '';
+      explanationEl.textContent = '';
+      optionsEl.innerHTML = '';
+
+      qTitle.textContent = `Door #${i+1}`;
+      qChip.textContent = `Difficulty: ${q.difficulty}`;
+      qPoints.textContent = `Worth: +${pts} pts`;
+      qPrompt.textContent = q.text || '(No question text found.)';
+
+      q.options.forEach((opt, idx)=>{
+        const b = document.createElement('button');
+        b.className = 'btn';
+        b.type = 'button';
+        b.textContent = `${String.fromCharCode(65+idx)}. ${opt}`;
+        b.addEventListener('click', ()=> submitAnswer(i, idx));
+        optionsEl.appendChild(b);
+      });
+
+      showScreen('q');
+    }
+
+    function submitAnswer(i, chosenIdx){
+      const q = state.questions[i];
+      if (state.answered[i]) return;
+
+      const pts = pointsForDifficulty(q.difficulty);
+      const isCorrect = (chosenIdx === q.correctIndex);
+
+      state.picked[i] = true;
+      state.answered[i] = true;
+      state.chosenIndex[i] = chosenIdx;
+      state.correct[i] = isCorrect;
+
+      state.chosenCount++;
+      state.possiblePts += pts;
+      if (isCorrect) state.scorePts += pts;
+
+      updateHud();
+
+      $$('.btn', optionsEl).forEach(btn => btn.disabled = true);
+
+      feedbackEl.classList.add('show');
+      if (isCorrect){
+        playCorrectSfx();
+        verdictEl.innerHTML = `<span class="tag good">✅ Correct (+${pts} pts)</span> <span style="font-weight:900; opacity:.9;">Nice!</span>`;
+        explanationEl.textContent = q.explanation || 'No explanation provided.';
+      } else {
+        playWrongSfx();
+        const correctText = (q.options?.[q.correctIndex] ?? '(unknown)');
+        verdictEl.innerHTML = `<span class="tag bad">❌ Wrong (+0 pts)</span> <span style="font-weight:900; opacity:.9;">Correct answer shown below 💡</span>`;
+        explanationEl.textContent = `Correct answer: ${correctText}. ${q.explanation || ''}`.trim();
+      }
+    }
+
+    backBtn.addEventListener('click', ()=>{
+      const limitReached = state.chosenCount >= MAX_DOORS_TO_CHOOSE;
+
+      renderDoors();
+      updateHud();
+
+      if (limitReached){
+        renderResults();
+        showScreen('results');
+      } else {
+        showScreen('hall');
+      }
+    });
+
+    finishEarlyBtn.addEventListener('click', ()=>{
+      renderResults();
+      showScreen('results');
+    });
+
+    function renderResults(){
+      const totalPossible = state.possiblePts;
+      const earned = state.scorePts;
+      const pct = totalPossible ? Math.round((earned / totalPossible) * 100) : 0;
+
+      resName.textContent = state.studentName || '(No name)';
+      resScore.textContent = `${earned}/${totalPossible}`;
+      resPct.textContent = `${pct}%`;
+
+      missedList.innerHTML = '';
+
+      const pickedIdxs = state.picked
+        .map((v, idx) => v ? idx : -1)
+        .filter(idx => idx >= 0);
+
+      const missedIdxs = pickedIdxs.filter(i => state.correct[i] === false);
+
+      if (!pickedIdxs.length){
+        const msg = document.createElement('div');
+        msg.style.padding = '12px';
+        msg.style.borderRadius = '14px';
+        msg.style.border = '3px solid rgba(0,0,0,.75)';
+        msg.style.background = 'rgba(0,0,0,.06)';
+        msg.style.boxShadow = '0 10px 0 rgba(0,0,0,.14)';
+        msg.innerHTML = `<div style="font-weight:900; font-size:18px;">No doors chosen 🥲</div><div style="margin-top:6px; line-height:1.55;">Go back and open 3 doors!</div>`;
+        missedList.appendChild(msg);
+        return;
+      }
+
+      if (!missedIdxs.length){
+        const perfect = document.createElement('div');
+        perfect.style.padding = '12px';
+        perfect.style.borderRadius = '14px';
+        perfect.style.border = '3px solid rgba(0,0,0,.75)';
+        perfect.style.background = 'rgba(125,255,138,.12)';
+        perfect.style.boxShadow = '0 10px 0 rgba(0,0,0,.14)';
+        perfect.innerHTML = `<div style="font-weight:900; font-size:18px;">🌟 CLEAN SWEEP!</div><div style="margin-top:6px; line-height:1.55;">No missed questions. You cleared your doors perfectly 😤✨</div>`;
+        missedList.appendChild(perfect);
+        return;
+      }
+
+      const header = document.createElement('div');
+      header.style.fontWeight = '900';
+      header.style.marginTop = '8px';
+      header.textContent = `Missed Questions (${missedIdxs.length})`;
+      missedList.appendChild(header);
+
+      missedIdxs.forEach((i)=>{
+        const q = state.questions[i];
+        const correctText = q.options?.[q.correctIndex] ?? '(unknown)';
+        const expl = q.explanation || 'No explanation provided.';
+
+        const item = document.createElement('div');
+        item.className = 'miss-item';
+        item.innerHTML = `
+          <h4>Door #${i+1} (${q.difficulty})</h4>
+          <div class="line"><b>Question:</b> ${escapeHtml(q.text)}</div>
+          <div class="line"><b>Correct:</b> ${escapeHtml(String(correctText))}</div>
+          <div class="line"><b>Explanation:</b> ${escapeHtml(expl)}</div>
+        `;
+        missedList.appendChild(item);
+      });
+    }
+
+    playAgainBtn.addEventListener('click', ()=>{
+      // keep name, reshuffle questions
+      const keepName = state.studentName;
+      initState(keepName);
+      showScreen('hall');
+    });
+
+    backToDoorsBtn.addEventListener('click', ()=>{
+      renderDoors();
+      updateHud();
+      showScreen('hall');
+    });
+
+    // Mute toggle
+    function setMuted(next){
+      muted = next;
+      muteToggle.classList.toggle('muted', muted);
+      muteLabel.textContent = muted ? 'SFX: OFF' : 'SFX: ON';
+      if (!muted) playCorrectSfx();
+    }
+    muteToggle.addEventListener('click', ()=> setMuted(!muted));
+    muteToggle.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        setMuted(!muted);
+      }
+    });
+
+    // Unlock audio on first gesture
+    window.addEventListener('pointerdown', ()=>{ ensureAudio(); }, { once:true });
+
+    // Start flow
+    startBtn.addEventListener('click', ()=>{
+      const name = (nameInput.value || '').trim();
+      initState(name);
+      showScreen('hall');
+    });
+    nameInput.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter'){
+        e.preventDefault();
+        startBtn.click();
+      }
+    });
+
+    // Init default (start screen)
+    (function boot(){
+      // show start; hud updates later after initState
+      // set a friendly default in hud name
+      $('#hudName').textContent = 'Not set';
+      $('#hudScore').textContent = '0';
+      $('#hudTotalPts').textContent = '0';
+      $('#hudChosen').textContent = '0';
+      $('#hudMax').textContent = String(MAX_DOORS_TO_CHOOSE);
+      $('#hudRemaining').textContent = String(MAX_DOORS_TO_CHOOSE);
+    })();
+  </script>
+</body>
+</html>
